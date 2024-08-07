@@ -36,6 +36,7 @@ ARG hypopg_release=1.3.1
 ARG pgvector_release=0.4.0
 ARG pg_tle_release=1.3.2
 ARG index_advisor_release=0.2.0
+ARG pldebugger_release=1.8
 ARG supautils_release=2.2.1
 ARG wal_g_release=2.0.1
 
@@ -818,6 +819,27 @@ RUN --mount=type=cache,target=/ccache,from=public.ecr.aws/supabase/postgres:ccac
 # Create debian package
 RUN checkinstall -D --install=no --fstrans=no --backup=no --pakdir=/tmp --nodoc
 
+######################
+# parkernilson - include pldebugger extension
+######################
+FROM ccache as pldebugger
+ARG pldebugger_release
+ADD "https://github.com/EnterpriseDB/pldebugger/archive/refs/tags/v${pldebugger_release}.tar.gz" \
+    /tmp/pldebugger.tar.gz
+RUN tar -xvf /tmp/pldebugger.tar.gz -C /tmp && \
+    rm -rf /tmp/pldebugger.tar.gz
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git build-essential libreadline-dev zlib1g-dev bison libkrb5-dev flex libicu-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+# Build from source
+WORKDIR /tmp/pldebugger-${pldebugger_release}
+ENV USE_PGXS=1
+RUN --mount=type=cache,target=/ccache,from=public.ecr.aws/supabase/postgres:ccache \
+    make -j$(nproc)
+RUN make install
+# Create debian package
+RUN checkinstall -D --install=no --fstrans=no --backup=no --pakdir=/tmp --nodoc
+
 ####################
 # internal/supautils.yml
 ####################
@@ -898,6 +920,7 @@ COPY --from=pg_repack-source /tmp/*.deb /tmp/
 COPY --from=pgvector-source /tmp/*.deb /tmp/
 COPY --from=pg_tle-source /tmp/*.deb /tmp/
 COPY --from=index_advisor /tmp/*.deb /tmp/
+COPY --from=pldebugger /tmp/*.deb /tmp/
 COPY --from=supautils /tmp/*.deb /tmp/
 
 ####################
