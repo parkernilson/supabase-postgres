@@ -61,6 +61,7 @@
         };
 
         sfcgal = pkgs.callPackage ./nix/ext/sfcgal/sfcgal.nix { };
+        pg_regress = pkgs.callPackage ./nix/ext/pg_regress.nix { };
 
         # Our list of PostgreSQL extensions which come from upstream Nixpkgs.
         # These are maintained upstream and can easily be used here just by
@@ -269,6 +270,7 @@
           #psql_16 = makePostgres "16";
           #psql_orioledb_16 = makeOrioleDbPostgres "16_23" postgresql_orioledb_16;
           sfcgal = sfcgal;
+          pg_regress = pg_regress;
           pg_prove = pkgs.perlPackages.TAPParserSourceHandlerpgTAP;
           # Start a version of the server.
           start-server =
@@ -367,7 +369,7 @@
           in
           pkgs.runCommand "postgres-${pgpkg.version}-check-harness"
             {
-              nativeBuildInputs = with pkgs; [ coreutils bash pgpkg pg_prove procps ];
+              nativeBuildInputs = with pkgs; [ coreutils bash pgpkg pg_prove pg_regress procps ];
             } ''
             TMPDIR=$(mktemp -d)
             if [ $? -ne 0 ]; then
@@ -415,7 +417,19 @@
             done
             createdb -p 5432 -h localhost testing
             psql -p 5432 -h localhost -d testing -Xaf ${./nix/tests/prime.sql}
+
             pg_prove -p 5432 -h localhost -d testing ${sqlTests}/*.sql
+
+            mkdir -p $out/regression_output
+            pg_regress \
+              --use-existing \
+              --dbname=testing \
+              --inputdir=${./nix/tests} \
+              --outputdir=$out/regression_output \
+              --host=localhost \
+              --port=5432 \
+              $(ls ${./nix/tests/sql} | sed -e 's/\..*$//' | sort )
+			
             pg_ctl -D "$PGDATA" stop
             mv $TMPDIR/logfile/postgresql.log $out
             echo ${pgpkg}
