@@ -1,3 +1,11 @@
+# Parkernilson Fork of Supabase/postgres with the following modifications
+1. Includes pldebugger extension
+
+## Versioning
+The goal is to sync this fork with the upstream repo occasionally. Versioning will reflect the version of supabase/postgres that it is based on.
+
+I.e. `parkernilson/supabase-postgres:15.1.1.84` will be `supabase/postgres:15.1.1.84` with the above enhancements.
+
 # Postgres + goodies
 
 Unmodified Postgres with some useful plugins. Our goal with this repo is not to modify Postgres, but to provide some of the most common extensions with a one-click install.
